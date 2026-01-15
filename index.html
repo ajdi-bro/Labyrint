@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hardcore Labyrint</title>
+    <title>Impossible Maze</title>
     <style>
         body {
             display: flex;
@@ -13,33 +13,32 @@
             height: 100vh;
             margin: 0;
             background-color: #000;
-            color: #fff;
-            font-family: 'Arial', sans-serif;
+            color: #ff0000;
+            font-family: 'Courier New', monospace;
             overflow: hidden;
         }
 
-        #ui { margin-bottom: 10px; text-align: center; }
+        #ui { margin-bottom: 5px; text-align: center; }
 
         canvas {
-            border: 5px solid #333;
+            border: 2px solid #444;
             background-color: #000;
-            box-shadow: 0 0 50px rgba(255, 0, 0, 0.2);
         }
 
         .confetti {
             position: absolute;
-            width: 8px; height: 8px;
+            width: 5px; height: 5px;
             z-index: 1000;
             animation: fall linear forwards;
         }
 
-        @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+        @keyframes fall { to { transform: translateY(110vh) rotate(360deg); } }
     </style>
 </head>
 <body>
 
     <div id="ui">
-        <h2 style="color: #ff4d4d; letter-spacing: 2px;">NIVÅ <span id="level">1</span></h2>
+        <h3 id="stat">NIVÅ: <span id="level">1</span></h3>
     </div>
     
     <canvas id="mazeCanvas"></canvas>
@@ -56,12 +55,12 @@
         let path = [{ x: 0, y: 0 }];
 
         function setup() {
-            // Starter på 25x25 og går oppover. Dette gir mange små ganger.
-            cols = 25 + (level * 3);
-            rows = 25 + (level * 3);
+            // Starter ekstremt tett (40x40) og øker med 5 for hvert nivå
+            cols = 40 + (level * 5);
+            rows = 40 + (level * 5);
             
-            const maxSize = Math.min(window.innerWidth * 0.95, window.innerHeight * 0.8);
-            cellSize = Math.floor(maxSize / cols);
+            const maxSize = Math.min(window.innerWidth * 0.98, window.innerHeight * 0.85);
+            cellSize = maxSize / cols;
             
             canvas.width = cols * cellSize;
             canvas.height = rows * cellSize;
@@ -99,8 +98,10 @@
             stack.push(current);
 
             while (stack.length > 0) {
-                let neighbors = getNeighbors(current);
+                let neighbors = getUnvisitedNeighbors(current);
                 if (neighbors.length > 0) {
+                    // Vanskelighets-tweak: Velg naboen som er lengst unna for å skape rette strekk, 
+                    // eller helt tilfeldig for å skape kaos. Her bruker vi kaos-metoden.
                     let next = neighbors[Math.floor(Math.random() * neighbors.length)];
                     next.visited = true;
                     stack.push(current);
@@ -112,18 +113,15 @@
             }
         }
 
-        function getNeighbors(cell) {
+        function getUnvisitedNeighbors(cell) {
             let ns = [];
-            let x = cell.x, y = cell.y;
-            let top = grid[cell.index(x, y - 1)];
-            let right = grid[cell.index(x + 1, y)];
-            let bottom = grid[cell.index(x, y + 1)];
-            let left = grid[cell.index(x - 1, y)];
-
-            if (top && !top.visited) ns.push(top);
-            if (right && !right.visited) ns.push(right);
-            if (bottom && !bottom.visited) ns.push(bottom);
-            if (left && !left.visited) ns.push(left);
+            let {x, y} = cell;
+            let check = [[x, y-1, 0], [x+1, y, 1], [x, y+1, 2], [x-1, y, 3]];
+            
+            for (let [nx, ny, wall] of check) {
+                let neighbor = grid[cell.index(nx, ny)];
+                if (neighbor && !neighbor.visited) ns.push(neighbor);
+            }
             return ns;
         }
 
@@ -140,11 +138,9 @@
             ctx.fillStyle = "#000";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Tegn veggene - Knallhvite og tydelige
-            ctx.strokeStyle = "#ffffff";
-            ctx.lineWidth = 2;
-            ctx.lineCap = "square";
-            
+            // Tegn syltynne vegger
+            ctx.strokeStyle = "#444";
+            ctx.lineWidth = 1;
             for (let cell of grid) {
                 let x = cell.x * cellSize;
                 let y = cell.y * cellSize;
@@ -154,18 +150,16 @@
                 if (cell.walls[3]) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + cellSize); ctx.stroke(); }
             }
 
-            // Mål
+            // Mål (Exit) - Liten grønn prikk
             ctx.fillStyle = "#00ff00";
-            ctx.fillRect((cols-1)*cellSize + 2, (rows-1)*cellSize + 2, cellSize-4, cellSize-4);
+            ctx.fillRect((cols-1)*cellSize + 1, (rows-1)*cellSize + 1, cellSize-2, cellSize-2);
 
-            // Tegn stien (Rød tykk strek med glød)
+            // Spillerens sti (Tydelig rød strek med glød)
             if (path.length > 1) {
-                ctx.shadowBlur = 10;
+                ctx.shadowBlur = 5;
                 ctx.shadowColor = "#ff0000";
                 ctx.strokeStyle = "#ff0000";
-                ctx.lineWidth = Math.max(3, cellSize / 3);
-                ctx.lineJoin = "round";
-                ctx.lineCap = "round";
+                ctx.lineWidth = Math.max(2, cellSize / 2.5);
                 ctx.beginPath();
                 ctx.moveTo(path[0].x * cellSize + cellSize/2, path[0].y * cellSize + cellSize/2);
                 for (let i = 1; i < path.length; i++) {
@@ -175,7 +169,7 @@
                 ctx.shadowBlur = 0;
             }
 
-            // Spilleren (Rød prikk)
+            // Spilleren
             ctx.fillStyle = "#ff0000";
             ctx.beginPath();
             ctx.arc(player.x * cellSize + cellSize/2, player.y * cellSize + cellSize/2, cellSize/2.5, 0, Math.PI*2);
@@ -206,18 +200,18 @@
         });
 
         function win() {
-            for (let i = 0; i < 80; i++) {
+            for (let i = 0; i < 150; i++) {
                 const c = document.createElement('div');
                 c.className = 'confetti';
                 c.style.left = Math.random() * 100 + 'vw';
                 c.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
                 c.style.animationDuration = (Math.random() * 2 + 1) + 's';
                 document.body.appendChild(c);
-                setTimeout(() => c.remove(), 2000);
+                setTimeout(() => c.remove(), 2500);
             }
             level++;
             levelDisplay.innerText = level;
-            setTimeout(setup, 1000);
+            setTimeout(setup, 1200);
         }
 
         setup();
