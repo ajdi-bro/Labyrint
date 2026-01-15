@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Umulig Labyrint</title>
+    <title>Den Ultimate Labyrinten</title>
     <style>
         body {
             display: flex;
@@ -12,44 +12,35 @@
             justify-content: center;
             height: 100vh;
             margin: 0;
-            background-color: #1a1a2e;
-            color: #e94560;
-            font-family: 'Courier New', Courier, monospace;
+            background-color: #050505;
+            color: #00ff41; /* Matrix-aktig grønn */
+            font-family: 'Courier New', monospace;
             overflow: hidden;
         }
 
-        #ui {
-            margin-bottom: 15px;
-            text-align: center;
-        }
+        #ui { margin-bottom: 10px; text-align: center; }
 
         canvas {
-            border: 5px solid #e94560;
-            background-color: #16213e;
-            image-rendering: pixelated;
+            border: 2px solid #333;
+            background-color: #000;
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.1);
         }
 
-        h1 { margin: 5px; text-transform: uppercase; letter-spacing: 3px; }
-        
         .confetti {
             position: absolute;
-            width: 8px;
-            height: 8px;
-            top: -10px;
-            z-index: 100;
+            width: 6px; height: 6px;
+            z-index: 1000;
             animation: fall linear forwards;
         }
 
-        @keyframes fall {
-            to { transform: translateY(100vh) rotate(720deg); }
-        }
+        @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
     </style>
 </head>
 <body>
 
     <div id="ui">
-        <h1>Nivå: <span id="level">1</span></h1>
-        <p>Finn veien gjennom kaoset...</p>
+        <h2>NIVÅ: <span id="level">1</span></h2>
+        <small>Kun én vei er riktig. Resten er løgn.</small>
     </div>
     
     <canvas id="mazeCanvas"></canvas>
@@ -66,11 +57,11 @@
         let path = [{ x: 0, y: 0 }];
 
         function setup() {
-            // Starter mye vanskeligere (25x25) og øker raskt
-            cols = 20 + (level * 5);
-            rows = 20 + (level * 5);
+            // Skalerer opp raskt for å øke vanskelighetsgrad
+            cols = 20 + (level * 4);
+            rows = 20 + (level * 4);
             
-            const maxSize = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.75);
+            const maxSize = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.8);
             cellSize = Math.floor(maxSize / cols);
             
             canvas.width = cols * cellSize;
@@ -83,7 +74,7 @@
                 }
             }
 
-            generateComplexMaze();
+            generatePerfectHardMaze();
             player = { x: 0, y: 0 };
             path = [{ x: 0, y: 0 }];
             draw();
@@ -96,59 +87,47 @@
                 this.walls = [true, true, true, true]; 
                 this.visited = false;
             }
-
             index(x, y) {
-                if (x < 0 || y < 0 || x > cols - 1 || y > rows - 1) return -1;
+                if (x < 0 || y < 0 || x >= cols || y >= rows) return -1;
                 return x + y * cols;
             }
         }
 
-        function generateComplexMaze() {
-            // 1. Standard DFS for å sikre at den ER løselig
+        function generatePerfectHardMaze() {
             let current = grid[0];
             current.visited = true;
             let stack = [current];
 
             while (stack.length > 0) {
-                let next = getUnvisitedNeighbor(current);
-                if (next) {
+                let neighbors = [];
+                let x = current.x;
+                let y = current.y;
+
+                let potentials = [
+                    grid[current.index(x, y - 1)],
+                    grid[current.index(x + 1, y)],
+                    grid[current.index(x, y + 1)],
+                    grid[current.index(x - 1, y)]
+                ];
+
+                for (let p of potentials) {
+                    if (p && !p.visited) neighbors.push(p);
+                }
+
+                if (neighbors.length > 0) {
+                    // Velger en tilfeldig nabo for å fortsette stien
+                    let next = neighbors[Math.floor(Math.random() * neighbors.length)];
                     next.visited = true;
                     stack.push(current);
-                    removeWallsBetween(current, next);
+                    removeWalls(current, next);
                     current = next;
                 } else {
                     current = stack.pop();
                 }
             }
-
-            // 2. GJØR DEN VANSKELIG: Fjern tilfeldige vegger for å lage "falske veier" og løkker
-            // Dette gjør at det ikke lenger bare er én vei, men et nettverk av veier.
-            for (let i = 0; i < (cols * rows) * 0.15; i++) {
-                let randomCell = grid[Math.floor(Math.random() * grid.length)];
-                let randomWall = Math.floor(Math.random() * 4);
-                
-                // Unngå å fjerne yttervegger
-                if (randomWall === 0 && randomCell.y > 0) {
-                    let neighbor = grid[randomCell.index(randomCell.x, randomCell.y - 1)];
-                    removeWallsBetween(randomCell, neighbor);
-                } else if (randomWall === 1 && randomCell.x < cols - 1) {
-                    let neighbor = grid[randomCell.index(randomCell.x + 1, randomCell.y)];
-                    removeWallsBetween(randomCell, neighbor);
-                }
-            }
         }
 
-        function getUnvisitedNeighbor(cell) {
-            let neighbors = [];
-            let idx = cell.index(cell.x, cell.y - 1); if (idx !== -1 && !grid[idx].visited) neighbors.push(grid[idx]);
-            idx = cell.index(cell.x + 1, cell.y); if (idx !== -1 && !grid[idx].visited) neighbors.push(grid[idx]);
-            idx = cell.index(cell.x, cell.y + 1); if (idx !== -1 && !grid[idx].visited) neighbors.push(grid[idx]);
-            idx = cell.index(cell.x - 1, cell.y); if (idx !== -1 && !grid[idx].visited) neighbors.push(grid[idx]);
-
-            return neighbors.length > 0 ? neighbors[Math.floor(Math.random() * neighbors.length)] : undefined;
-        }
-
-        function removeWallsBetween(a, b) {
+        function removeWalls(a, b) {
             let x = a.x - b.x;
             if (x === -1) { a.walls[1] = false; b.walls[3] = false; }
             else if (x === 1) { a.walls[3] = false; b.walls[1] = false; }
@@ -158,27 +137,34 @@
         }
 
         function draw() {
-            ctx.fillStyle = "#16213e";
+            ctx.fillStyle = "#000";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            ctx.strokeStyle = "#4ecca3";
+            // Tegn labyrint-veggene
+            ctx.strokeStyle = "#1a1a1a"; // Mørkere vegger for fokus
             ctx.lineWidth = 2;
             for (let cell of grid) {
                 let x = cell.x * cellSize;
                 let y = cell.y * cellSize;
-                if (cell.walls[0]) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + cellSize, y); ctx.stroke(); }
-                if (cell.walls[1]) { ctx.beginPath(); ctx.moveTo(x + cellSize, y); ctx.lineTo(x + cellSize, y + cellSize); ctx.stroke(); }
-                if (cell.walls[2]) { ctx.beginPath(); ctx.moveTo(x, y + cellSize); ctx.lineTo(x + cellSize, y + cellSize); ctx.stroke(); }
-                if (cell.walls[3]) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + cellSize); ctx.stroke(); }
+                ctx.beginPath();
+                if (cell.walls[0]) { ctx.moveTo(x, y); ctx.lineTo(x + cellSize, y); }
+                if (cell.walls[1]) { ctx.moveTo(x + cellSize, y); ctx.lineTo(x + cellSize, y + cellSize); }
+                if (cell.walls[2]) { ctx.moveTo(x, y + cellSize); ctx.lineTo(x + cellSize, y + cellSize); }
+                if (cell.walls[3]) { ctx.moveTo(x, y); ctx.lineTo(x, y + cellSize); }
+                ctx.stroke();
             }
 
-            // Mål
-            ctx.fillStyle = "#4ecca3";
-            ctx.fillRect((cols - 1) * cellSize + 2, (rows - 1) * cellSize + 2, cellSize - 4, cellSize - 4);
+            // Mål (Exit)
+            ctx.fillStyle = "#00ff41";
+            ctx.shadowBlur = 10; ctx.shadowColor = "#00ff41";
+            ctx.fillRect((cols - 1) * cellSize + 4, (rows - 1) * cellSize + 4, cellSize - 8, cellSize - 8);
+            ctx.shadowBlur = 0;
 
-            // Spillersti
-            ctx.strokeStyle = "#e94560";
-            ctx.lineWidth = Math.max(1, cellSize / 4);
+            // Spillerens sti (Strek etter dotten)
+            ctx.strokeStyle = "#ff0000";
+            ctx.lineWidth = Math.max(2, cellSize / 5);
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
             ctx.beginPath();
             ctx.moveTo(path[0].x * cellSize + cellSize / 2, path[0].y * cellSize + cellSize / 2);
             for (let i = 1; i < path.length; i++) {
@@ -186,58 +172,54 @@
             }
             ctx.stroke();
 
-            // Spiller (Rød dott)
-            ctx.fillStyle = "#e94560";
+            // Spilleren (Rød prikk)
+            ctx.fillStyle = "#ff0000";
             ctx.beginPath();
             ctx.arc(player.x * cellSize + cellSize / 2, player.y * cellSize + cellSize / 2, cellSize / 3, 0, Math.PI * 2);
             ctx.fill();
         }
 
         window.addEventListener('keydown', (e) => {
-            if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+            if (!e.key.startsWith('Arrow')) return;
             e.preventDefault();
 
-            let currentCell = grid[player.x + player.y * cols];
-            let nextX = player.x;
-            let nextY = player.y;
-            let wallIndex;
+            let cur = grid[player.x + player.y * cols];
+            let nx = player.x, ny = player.y, wi;
 
-            if (e.key === 'ArrowUp') { nextY--; wallIndex = 0; }
-            else if (e.key === 'ArrowRight') { nextX++; wallIndex = 1; }
-            else if (e.key === 'ArrowDown') { nextY++; wallIndex = 2; }
-            else if (e.key === 'ArrowLeft') { nextX--; wallIndex = 3; }
+            if (e.key === 'ArrowUp') { ny--; wi = 0; }
+            else if (e.key === 'ArrowRight') { nx++; wi = 1; }
+            else if (e.key === 'ArrowDown') { ny++; wi = 2; }
+            else if (e.key === 'ArrowLeft') { nx--; wi = 3; }
 
-            if (wallIndex !== undefined && !currentCell.walls[wallIndex]) {
-                if (path.length > 1 && nextX === path[path.length - 2].x && nextY === path[path.length - 2].y) {
+            if (wi !== undefined && !cur.walls[wi]) {
+                // Backtracking logikk (slett strek hvis du går tilbake)
+                if (path.length > 1 && nx === path[path.length - 2].x && ny === path[path.length - 2].y) {
                     path.pop();
                 } else {
-                    path.push({ x: nextX, y: nextY });
+                    path.push({ x: nx, y: ny });
                 }
-                player.x = nextX;
-                player.y = nextY;
+                player.x = nx; player.y = ny;
                 draw();
 
-                if (player.x === cols - 1 && player.y === rows - 1) win();
+                if (player.x === cols - 1 && player.y === rows - 1) {
+                    win();
+                }
             }
         });
 
         function win() {
-            createConfetti();
+            for (let i = 0; i < 100; i++) {
+                const c = document.createElement('div');
+                c.className = 'confetti';
+                c.style.left = Math.random() * 100 + 'vw';
+                c.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
+                c.style.animationDuration = (Math.random() * 2 + 1) + 's';
+                document.body.appendChild(c);
+                setTimeout(() => c.remove(), 2500);
+            }
             level++;
             levelDisplay.innerText = level;
-            setTimeout(setup, 1000);
-        }
-
-        function createConfetti() {
-            for (let i = 0; i < 100; i++) {
-                const confetti = document.createElement('div');
-                confetti.classList.add('confetti');
-                confetti.style.left = Math.random() * 100 + 'vw';
-                confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
-                confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
-                document.body.appendChild(confetti);
-                setTimeout(() => confetti.remove(), 4000);
-            }
+            setTimeout(setup, 800);
         }
 
         setup();
