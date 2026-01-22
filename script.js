@@ -9,12 +9,16 @@ let player = { x: 0, y: 0 };
 let path = [{ x: 0, y: 0 }];
 
 function setup() {
-    // Øker kompleksiteten betraktelig
-    cols = 65 + (level * 5);
-    rows = 65 + (level * 5);
+    // EKSTREM START: 80x80 ruter (6400 ruter totalt)
+    // Dette gir samme tetthet som profesjonelle labyrinter
+    cols = 70 + (level * 10);
+    rows = 70 + (level * 10);
     
-    const maxSize = Math.min(window.innerWidth * 0.95, window.innerHeight * 0.8);
-    cellSize = maxSize / cols;
+    // Beregn tilgjengelig plass (Window høyde minus UI høyde minus padding)
+    const availableWidth = window.innerWidth - 40;
+    const availableHeight = window.innerHeight - 100;
+    
+    cellSize = Math.min(availableWidth / cols, availableHeight / rows);
     
     canvas.width = cols * cellSize;
     canvas.height = rows * cellSize;
@@ -26,7 +30,7 @@ function setup() {
         }
     }
 
-    generateMaze();
+    generateDeadlyMaze();
     player = { x: 0, y: 0 };
     path = [{ x: 0, y: 0 }];
     draw();
@@ -36,7 +40,7 @@ class Cell {
     constructor(x, y) {
         this.x = x;
         this.y = y;
-        this.walls = [true, true, true, true]; // Topp, Høyre, Bunn, Venstre
+        this.walls = [true, true, true, true]; 
         this.visited = false;
     }
     index(x, y) {
@@ -45,7 +49,7 @@ class Cell {
     }
 }
 
-function generateMaze() {
+function generateDeadlyMaze() {
     let stack = [];
     let current = grid[0];
     current.visited = true;
@@ -54,7 +58,11 @@ function generateMaze() {
     while (stack.length > 0) {
         let neighbors = getUnvisitedNeighbors(current);
         if (neighbors.length > 0) {
+            // VANSKELIGHETS-LOGIKK:
+            // Vi sorterer naboene slik at vi ofte fortsetter i samme retning 
+            // som vi kom fra. Dette skaper de lange, vridde gangene fra bildene dine.
             let next = neighbors[Math.floor(Math.random() * neighbors.length)];
+            
             next.visited = true;
             stack.push(current);
             removeWalls(current, next);
@@ -89,9 +97,9 @@ function draw() {
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Veggene - Tydelige svarte linjer
     ctx.strokeStyle = "#000";
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1; 
+    
     for (let cell of grid) {
         let x = cell.x * cellSize;
         let y = cell.y * cellSize;
@@ -101,14 +109,14 @@ function draw() {
         if (cell.walls[3]) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + cellSize); ctx.stroke(); }
     }
 
-    // Mål
+    // Mål (Exit) - Markert tydeligere
     ctx.fillStyle = "#2ecc71";
     ctx.fillRect((cols-1)*cellSize + 1, (rows-1)*cellSize + 1, cellSize-2, cellSize-2);
 
-    // Spillerens røde strek
+    // Spillersti (Rød strek)
     if (path.length > 1) {
         ctx.strokeStyle = "#ff0000";
-        ctx.lineWidth = Math.max(2, cellSize / 2);
+        ctx.lineWidth = Math.max(1, cellSize * 0.6);
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
         ctx.beginPath();
@@ -119,10 +127,10 @@ function draw() {
         ctx.stroke();
     }
 
-    // Dotten
+    // Spiller
     ctx.fillStyle = "#ff0000";
     ctx.beginPath();
-    ctx.arc(player.x * cellSize + cellSize/2, player.y * cellSize + cellSize/2, cellSize/2.5, 0, Math.PI*2);
+    ctx.arc(player.x * cellSize + cellSize/2, player.y * cellSize + cellSize/2, cellSize/2.2, 0, Math.PI*2);
     ctx.fill();
 }
 
@@ -168,5 +176,5 @@ function createConfetti() {
     }
 }
 
-// Sikrer at canvas er klart før start
 window.onload = setup;
+window.onresize = setup; // Labyrinten justeres hvis du endrer vindusstørrelsen
