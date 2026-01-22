@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Impossible Maze</title>
+    <title>Ultimate Pro Maze</title>
     <style>
         body {
             display: flex;
@@ -12,22 +12,23 @@
             justify-content: center;
             height: 100vh;
             margin: 0;
-            background-color: #000;
-            color: #ff0000;
-            font-family: 'Courier New', monospace;
+            background-color: #f0f0f0;
+            font-family: 'Arial Black', sans-serif;
             overflow: hidden;
         }
 
-        #ui { margin-bottom: 5px; text-align: center; }
+        #ui { margin-bottom: 10px; text-align: center; color: #000; }
 
         canvas {
-            border: 2px solid #444;
-            background-color: #000;
+            background-color: #fff;
+            border: 8px solid #000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            image-rendering: crisp-edges;
         }
 
         .confetti {
             position: absolute;
-            width: 5px; height: 5px;
+            width: 10px; height: 10px;
             z-index: 1000;
             animation: fall linear forwards;
         }
@@ -38,7 +39,8 @@
 <body>
 
     <div id="ui">
-        <h3 id="stat">NIVÅ: <span id="level">1</span></h3>
+        <h2 style="margin:0">NIVÅ <span id="level">1</span></h2>
+        <p style="margin:0; font-size: 0.8em;">Finn veien gjennom kaoset</p>
     </div>
     
     <canvas id="mazeCanvas"></canvas>
@@ -55,11 +57,11 @@
         let path = [{ x: 0, y: 0 }];
 
         function setup() {
-            // Starter ekstremt tett (40x40) og øker med 5 for hvert nivå
-            cols = 40 + (level * 5);
-            rows = 40 + (level * 5);
+            // Starter ekstremt tett (50x50 ruter) for å ligne bildene dine
+            cols = 45 + (level * 5);
+            rows = 45 + (level * 5);
             
-            const maxSize = Math.min(window.innerWidth * 0.98, window.innerHeight * 0.85);
+            const maxSize = Math.min(window.innerWidth * 0.95, window.innerHeight * 0.8);
             cellSize = maxSize / cols;
             
             canvas.width = cols * cellSize;
@@ -72,7 +74,7 @@
                 }
             }
 
-            generateMaze();
+            generateDenseMaze();
             player = { x: 0, y: 0 };
             path = [{ x: 0, y: 0 }];
             draw();
@@ -82,7 +84,7 @@
             constructor(x, y) {
                 this.x = x;
                 this.y = y;
-                this.walls = [true, true, true, true]; 
+                this.walls = [true, true, true, true]; // Topp, Høyre, Bunn, Venstre
                 this.visited = false;
             }
             index(x, y) {
@@ -91,7 +93,7 @@
             }
         }
 
-        function generateMaze() {
+        function generateDenseMaze() {
             let stack = [];
             let current = grid[0];
             current.visited = true;
@@ -100,8 +102,7 @@
             while (stack.length > 0) {
                 let neighbors = getUnvisitedNeighbors(current);
                 if (neighbors.length > 0) {
-                    // Vanskelighets-tweak: Velg naboen som er lengst unna for å skape rette strekk, 
-                    // eller helt tilfeldig for å skape kaos. Her bruker vi kaos-metoden.
+                    // Velger en tilfeldig nabo for å skape uforutsigbare avvik
                     let next = neighbors[Math.floor(Math.random() * neighbors.length)];
                     next.visited = true;
                     stack.push(current);
@@ -117,7 +118,6 @@
             let ns = [];
             let {x, y} = cell;
             let check = [[x, y-1, 0], [x+1, y, 1], [x, y+1, 2], [x-1, y, 3]];
-            
             for (let [nx, ny, wall] of check) {
                 let neighbor = grid[cell.index(nx, ny)];
                 if (neighbor && !neighbor.visited) ns.push(neighbor);
@@ -135,12 +135,14 @@
         }
 
         function draw() {
-            ctx.fillStyle = "#000";
+            ctx.fillStyle = "#fff";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Tegn syltynne vegger
-            ctx.strokeStyle = "#444";
-            ctx.lineWidth = 1;
+            // Tegn tykke, svarte vegger slik som på tegningene
+            ctx.strokeStyle = "#000";
+            ctx.lineWidth = Math.max(1, cellSize / 4);
+            ctx.lineCap = "square";
+            
             for (let cell of grid) {
                 let x = cell.x * cellSize;
                 let y = cell.y * cellSize;
@@ -150,26 +152,25 @@
                 if (cell.walls[3]) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + cellSize); ctx.stroke(); }
             }
 
-            // Mål (Exit) - Liten grønn prikk
-            ctx.fillStyle = "#00ff00";
-            ctx.fillRect((cols-1)*cellSize + 1, (rows-1)*cellSize + 1, cellSize-2, cellSize-2);
+            // Sluttpunkt (Mål) - Markert med en liten grønn firkant
+            ctx.fillStyle = "#2ecc71";
+            ctx.fillRect((cols-1)*cellSize + 2, (rows-1)*cellSize + 2, cellSize-4, cellSize-4);
 
-            // Spillerens sti (Tydelig rød strek med glød)
+            // Spillerens rød strek (tydelig og glødende)
             if (path.length > 1) {
-                ctx.shadowBlur = 5;
-                ctx.shadowColor = "#ff0000";
                 ctx.strokeStyle = "#ff0000";
-                ctx.lineWidth = Math.max(2, cellSize / 2.5);
+                ctx.lineWidth = Math.max(2, cellSize / 2);
+                ctx.lineCap = "round";
+                ctx.lineJoin = "round";
                 ctx.beginPath();
                 ctx.moveTo(path[0].x * cellSize + cellSize/2, path[0].y * cellSize + cellSize/2);
                 for (let i = 1; i < path.length; i++) {
                     ctx.lineTo(path[i].x * cellSize + cellSize/2, path[i].y * cellSize + cellSize/2);
                 }
                 ctx.stroke();
-                ctx.shadowBlur = 0;
             }
 
-            // Spilleren
+            // Spilleren (Rød prikk)
             ctx.fillStyle = "#ff0000";
             ctx.beginPath();
             ctx.arc(player.x * cellSize + cellSize/2, player.y * cellSize + cellSize/2, cellSize/2.5, 0, Math.PI*2);
@@ -211,7 +212,7 @@
             }
             level++;
             levelDisplay.innerText = level;
-            setTimeout(setup, 1200);
+            setTimeout(setup, 1000);
         }
 
         setup();
