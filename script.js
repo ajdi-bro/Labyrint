@@ -9,9 +9,9 @@ let player = { x: 0, y: 0 };
 let path = [{ x: 0, y: 0 }];
 
 function setup() {
-    // EKSTREM START: 60x60 ruter gir et vanvittig detaljnivå
-    cols = 60 + (level * 5);
-    rows = 60 + (level * 5);
+    // Øker kompleksiteten betraktelig
+    cols = 65 + (level * 5);
+    rows = 65 + (level * 5);
     
     const maxSize = Math.min(window.innerWidth * 0.95, window.innerHeight * 0.8);
     cellSize = maxSize / cols;
@@ -70,28 +70,28 @@ function getUnvisitedNeighbors(cell) {
     let {x, y} = cell;
     let check = [[x, y-1, 0], [x+1, y, 1], [x, y+1, 2], [x-1, y, 3]];
     for (let [nx, ny, wall] of check) {
-        let neighbor = grid[cell.index(nx, ny)];
-        if (neighbor && !neighbor.visited) ns.push(neighbor);
+        let idx = cell.index(nx, ny);
+        if (idx !== -1 && !grid[idx].visited) ns.push(grid[idx]);
     }
     return ns;
 }
 
 function removeWalls(a, b) {
-    let x = a.x - b.x;
-    if (x === -1) { a.walls[1] = false; b.walls[3] = false; }
-    else if (x === 1) { a.walls[3] = false; b.walls[1] = false; }
-    let y = a.y - b.y;
-    if (y === -1) { a.walls[2] = false; b.walls[0] = false; }
-    else if (y === 1) { a.walls[0] = false; b.walls[2] = false; }
+    let dx = a.x - b.x;
+    if (dx === -1) { a.walls[1] = false; b.walls[3] = false; }
+    else if (dx === 1) { a.walls[3] = false; b.walls[1] = false; }
+    let dy = a.y - b.y;
+    if (dy === -1) { a.walls[2] = false; b.walls[0] = false; }
+    else if (dy === 1) { a.walls[0] = false; b.walls[2] = false; }
 }
 
 function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Tegn selve labyrinten
+    // Veggene - Tydelige svarte linjer
     ctx.strokeStyle = "#000";
-    ctx.lineWidth = 1; // Tynne linjer for profesjonell look
-    
+    ctx.lineWidth = 1;
     for (let cell of grid) {
         let x = cell.x * cellSize;
         let y = cell.y * cellSize;
@@ -101,14 +101,14 @@ function draw() {
         if (cell.walls[3]) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + cellSize); ctx.stroke(); }
     }
 
-    // Mål (Exit) - Grønn indikator
+    // Mål
     ctx.fillStyle = "#2ecc71";
     ctx.fillRect((cols-1)*cellSize + 1, (rows-1)*cellSize + 1, cellSize-2, cellSize-2);
 
-    // Spillersti (Rød strek)
+    // Spillerens røde strek
     if (path.length > 1) {
-        ctx.strokeStyle = "rgba(255, 0, 0, 0.8)";
-        ctx.lineWidth = Math.max(1, cellSize / 2.5);
+        ctx.strokeStyle = "#ff0000";
+        ctx.lineWidth = Math.max(2, cellSize / 2);
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
         ctx.beginPath();
@@ -119,14 +119,13 @@ function draw() {
         ctx.stroke();
     }
 
-    // Spiller-prikk
+    // Dotten
     ctx.fillStyle = "#ff0000";
     ctx.beginPath();
-    ctx.arc(player.x * cellSize + cellSize/2, player.y * cellSize + cellSize/2, cellSize/3, 0, Math.PI*2);
+    ctx.arc(player.x * cellSize + cellSize/2, player.y * cellSize + cellSize/2, cellSize/2.5, 0, Math.PI*2);
     ctx.fill();
 }
 
-// Kontroller
 window.addEventListener('keydown', (e) => {
     if (!e.key.startsWith('Arrow')) return;
     e.preventDefault();
@@ -140,9 +139,9 @@ window.addEventListener('keydown', (e) => {
 
     if (wi !== undefined && !cur.walls[wi]) {
         if (path.length > 1 && nx === path[path.length - 2].x && ny === path[path.length - 2].y) {
-            path.pop(); // Backtrack
+            path.pop();
         } else {
-            path.push({ x: nx, y: ny }); // Tegn sti
+            path.push({ x: nx, y: ny });
         }
         player.x = nx; player.y = ny;
         draw();
@@ -169,5 +168,5 @@ function createConfetti() {
     }
 }
 
-// Start spillet
-setup();
+// Sikrer at canvas er klart før start
+window.onload = setup;
